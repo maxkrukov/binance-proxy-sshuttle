@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "binance-proxy.fullname" . }}
+  labels:
+    {{- include "binance-proxy.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+{{- range .Values.service.services }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol }}
+      name: {{ .name }}
+{{- if and (eq $.Values.service.type "NodePort") ( .nodePort ) }}
+      nodePort: {{ .nodePort }}
+{{- end }}
+{{- end }}
+  selector:
+    {{- include "binance-proxy.selectorLabels" . | nindent 4 }}

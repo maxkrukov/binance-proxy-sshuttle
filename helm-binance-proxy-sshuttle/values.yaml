@@ -1,0 +1,105 @@
+# Default values for binance-proxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+recreatePods: false
+
+image:
+  repository: localhost:32000/binance-proxy
+  pullPolicy: Always
+  tag: "v1.5.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+SSH_USER: root
+SSH_HOST: 65.109.100.32 #should be IP
+SSH_KEY: /root/.ssh/id_ed25519
+
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  privileged: true
+
+service:
+  type: ClusterIP
+  services:
+  - name: futures
+    targetPort: 8091
+    port: 8091
+    protocol: TCP
+  - name: spot
+    targetPort: 8090
+    port: 8090
+    protocol: TCP
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: binance-spot.mydomain.com
+      paths:
+      - path: "/"
+        pathType: ImplementationSpecific
+      servicePort: "8090"
+    - host: binance-futures.mydomain.com
+      paths:
+      - path: "/"
+        pathType: ImplementationSpecific
+      servicePort: "8091"
+
+  tls: []
+  #  - secretName: binance-proxy-sshuttle-tls
+  #    hosts:
+  #      - binance-spot.mydomain.com
+  #      - binance-futures.mydomain.com
+
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+#initContainers: |-
+#  - name: init01
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+files:
+  - mountPath: /root/.ssh/id_ed25519
+    data:
+      private_key: |-
+           -----BEGIN OPENSSH PRIVATE KEY-----
+           .................................
+           -----END OPENSSH PRIVATE KEY-----
+

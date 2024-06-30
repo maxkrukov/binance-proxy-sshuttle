@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "binance-proxy.fullname" . }}
+  labels:
+    {{- include "binance-proxy.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "binance-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+    {{- if .Values.recreatePods }}
+        rollme: {{ randAlphaNum 5 | quote }}
+    {{- end }}
+    {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "binance-proxy.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
+      {{- if .Values.initContainers }}
+      initContainers:
+      {{- tpl .Values.initContainers . | nindent 8 }}
+      {{- end  }}
+      serviceAccountName: {{ include "binance-proxy.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "binance-proxy.fullname" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- with .Values.command }}
+          {{- end }}
+
+          env:
+            - name: SSH_USER
+              value: {{ .Values.SSH_USER | quote }}
+            - name: SSH_HOST
+              value: {{ .Values.SSH_HOST | quote }}
+
+          volumeMounts:
+
+            {{- if .Values.files }}
+            {{- range .Values.files }}
+            - mountPath: {{ .mountPath }}
+              name: files
+              {{- range $name, $value := .data }}
+              subPath: ..data/{{ $name }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+
+            {{- if .Values.binaryFiles }}
+            {{- range .Values.binaryFiles }}
+            - mountPath: {{ .mountPath }}
+              name: files
+              {{- range $name, $value := .data }}
+              subPath: ..data/{{ $name }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+
+          ports:
+            {{- range .Values.service.services }}
+            - name: {{ .name }}
+              containerPort: {{ .targetPort }}
+              protocol: {{ .protocol }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if or .Values.files .Values.binaryFiles }}
+        - name: files
+          configMap:
+            name: {{ include "binance-proxy.fullname" . }}
+            defaultMode: 0400
+      {{- end }}
